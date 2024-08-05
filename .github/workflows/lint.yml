@@ -33,6 +33,13 @@ jobs:
           else
             echo "status=yes" >> $GITHUB_OUTPUT
           fi
+      - id: should-check-static
+        run: |
+          if git diff --exit-code --quiet HEAD^ HEAD -- static/; then
+            echo "status=no" >> $GITHUB_OUTPUT
+          else
+            echo "status=yes" >> $GITHUB_OUTPUT
+          fi
       - uses: actions/cache@v3
         with:
           path: |
@@ -91,7 +98,7 @@ jobs:
             echo "status=yes" >> $GITHUB_OUTPUT
           fi
       - name: setup node
-        if: steps.should-check.outputs.status == 'yes'
+        if: steps.should-check-static.outputs.status == 'yes'
         uses: actions/setup-node@v3
         with:
           node-version: 18
@@ -103,12 +110,12 @@ jobs:
           owner: casey
           name: just
       - name: install dependencies
-        if: steps.should-check.outputs.status == 'yes'
+        if: steps.should-check-static.outputs.status == 'yes'
         run: |
           npm install -g stylelint typescript eslint
           npm install
       - name: lint static assets
-        if: steps.should-check.outputs.status == 'yes'
+        if: steps.should-check-static.outputs.status == 'yes'
         run: |
           just lint-static-ci
         shell: bash
