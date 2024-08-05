@@ -17,3 +17,9 @@ db_data/
 
 # soon:tm:
 contrib/
+
+# packages
+dist/
+
+# ESLint nonsense
+node_modules/
