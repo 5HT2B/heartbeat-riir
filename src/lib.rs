@@ -58,10 +58,10 @@ pub fn init_logging() {
 pub struct AppState {
     stats: Arc<Mutex<stats::Stats>>,
     pool: PgPool,
-    config: Config,
+    config: &'static Config,
     git_revision: &'static str,
     #[cfg(feature = "webhook")]
-    webhook: util::Webhook,
+    webhook: Arc<util::Webhook>,
     server_start_time: DateTime<Utc>,
 }
 
@@ -75,9 +75,9 @@ impl AppState {
     ///
     /// This function will return an error if the database pool could not be created, or
     /// (for some reason), fetching the stats using the pool fails.
-    pub async fn from_config(config: Config) -> sqlx::Result<Self> {
+    pub async fn from_config(config: &'static Config) -> sqlx::Result<Self> {
         #[cfg(feature = "webhook")]
-        let webhook = util::Webhook::new(config.webhook.clone());
+        let webhook = util::Webhook::new(&config.webhook);
         let pool = PgPoolOptions::default()
             .max_connections(10)
             .connect(&config.database.dsn)
@@ -94,7 +94,7 @@ impl AppState {
             config,
             git_revision: env!("HB_GIT_REVISION"),
             #[cfg(feature = "webhook")]
-            webhook,
+            webhook: Arc::new(webhook),
             server_start_time,
         })
     }

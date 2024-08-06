@@ -15,7 +15,7 @@
 
 use axum::{middleware, Server};
 use color_eyre::eyre::Result;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::OnceLock};
 use tower_http::{
     services::ServeDir,
     trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
@@ -24,15 +24,19 @@ use tracing::{info, span, warn, Instrument, Level};
 
 use heartbeat::{handle_errors, routes::router, AppState, Config};
 
+static CONFIG: OnceLock<Config> = OnceLock::new();
+
 #[tokio::main]
 async fn main() -> Result<()> {
     heartbeat::init_logging();
     color_eyre::install()?;
     let config = Config::try_new()?;
+    CONFIG.set(config).expect("Config to not be set");
+    let config = CONFIG.get().expect("config to be set");
     info!(config = ?config, "Loaded config");
     let bind = config.bind;
-    let router = router(&config);
-    let static_dir = config.static_dir.clone();
+    let router = router(config);
+    let static_dir = &config.static_dir.clone();
     let app_state = AppState::from_config(config).await?;
     let trace_service = TraceLayer::new_for_http()
         .make_span_with(DefaultMakeSpan::new().level(Level::INFO))

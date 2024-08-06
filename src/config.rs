@@ -62,7 +62,7 @@ pub struct Cli {
 }
 
 /// The configuration for the server.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Config {
     /// Database configuration.
     pub database: Database,
@@ -85,14 +85,14 @@ pub struct Config {
     pub static_dir: PathBuf,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize)]
 pub struct Database {
     /// A `PostgreSQL` connection string.
     pub dsn: String,
 }
 
 #[cfg(feature = "webhook")]
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize)]
 pub struct Webhook {
     /// The URL of the Discord webhook.
     pub url: String,
