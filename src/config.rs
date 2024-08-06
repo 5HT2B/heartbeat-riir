@@ -25,7 +25,7 @@ use tracing::{debug, info};
 
 {all-args}")]
 pub struct Cli {
-    /// A PostgreSQL connection string.
+    /// A `PostgreSQL` connection string.
     #[clap(long, short, env = "HEARTBEAT_DATABASE_DSN")]
     pub database_dsn: Option<String>,
     #[cfg(feature = "webhook")]
@@ -87,7 +87,7 @@ pub struct Config {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Database {
-    /// A PostgreSQL connection string.
+    /// A `PostgreSQL` connection string.
     pub dsn: String,
 }
 
