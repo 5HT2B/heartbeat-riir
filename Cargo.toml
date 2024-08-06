@@ -15,14 +15,14 @@ rust-version = "1.70"
 
 [dependencies]
 axum = { version = "0.6", features = ["macros", "tokio", "ws"] }
-axum-realip = { git = "https://git.5ht2.me/lmaotrigine/axum-realip", version = "0.1.0" }
+axum-realip = { git = "https://git.5ht2.me/lmaotrigine/axum-realip", version = "0.1.0", rev = "7fd0be272a7b683ae58e5117c657341aa072b423" }
 badges = { git = "https://github.com/lmaotrigine/badges", version = "0.1.0", optional = true }
 base64ct = "1"
 chrono = { version = "0.4", features = ["serde", "std", "clock"], default-features = false }
 clap = { version = "4", default-features = false, features = ["derive", "env", "error-context", "help", "std", "usage"] }
 color-eyre = "0.6"
 erased-debug = { git = "https://git.5ht2.me/lmaotrigine/erased-debug", version = "0.1.0", features = ["serde"] }
-html = { git = "https://git.5ht2.me/lmaotrigine/html-rs", version = "0.1.0", features = ["axum"] }
+html = { git = "https://git.5ht2.me/lmaotrigine/html-rs", version = "0.1.0", features = ["axum"], branch = "legacy" }
 itoa = "1"
 parking_lot = "0.12"
 rand = { version = "0.8", default-features = false, features = ["getrandom"] }
