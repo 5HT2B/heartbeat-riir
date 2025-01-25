@@ -1,0 +1,5 @@
+[build.env]
+passthrough = ["SQLX_OFFLINE", "RUSTFLAGS", "PKG_CONFIG_ALLOW_CROSS"]
+
+[target.mips-unknown-linux-musl]
+pre-build = ["apt update && apt install --no-install-recommends -y libssl-dev"]

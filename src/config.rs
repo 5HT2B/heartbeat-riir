@@ -1,11 +1,6 @@
-// Copyright (c) 2023 Isis <root@5ht2.me>
-//
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
-use clap::Parser;
+use clap::{Arg, Args, FromArgMatches, Parser, Subcommand};
 use erased_debug::Erased;
+use heartbeat_sys::heartbeat_home;
 use serde::Deserialize;
 use std::{
     fmt::Debug,
@@ -14,9 +9,10 @@ use std::{
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
     path::{Path, PathBuf},
 };
-use toml::{self, de::Error as TomlDeError};
+use toml::de::Error as TomlDeError;
 use tracing::{debug, info};
 
+#[doc = env!("CARGO_PKG_DESCRIPTION")]
 #[derive(Debug, Parser)]
 #[clap(about, author, version = crate::VERSION)]
 #[clap(help_template = r"{name} {version}
@@ -25,40 +21,143 @@ use tracing::{debug, info};
 
 {all-args}")]
 pub struct Cli {
-    /// A `PostgreSQL` connection string.
+    /// The subcommand to run.
+    #[clap(subcommand)]
+    pub subcommand: Option<Subcmd>,
+}
+
+/// Commands
+#[derive(Debug, Subcommand)]
+pub enum Subcmd {
+    /// Run the web server.
+    Run(Box<WebCli>),
+    /// Generate a new secret key.
+    GenKey,
+    /// Migrate the database.
+    #[cfg(feature = "migrate")]
+    Migrate(MigrateCli),
+}
+
+impl Default for Subcmd {
+    fn default() -> Self {
+        Self::Run(Box::new(WebCli::parse()))
+    }
+}
+
+/// Apply database migrations.
+#[cfg(feature = "migrate")]
+#[derive(Debug, Parser)]
+pub struct MigrateCli {
+    /// The path to the configuration file.
+    #[command(flatten)]
+    pub config_file: __ConfigFile,
+    /// The `PostgreSQL` connection string. [default:
+    /// `postgres://heartbeat@db/heartbeat` if running in Docker,
+    /// `postgres://postgres@localhost/postgres` otherwise]
+    #[clap(long, short, env = "HEARTBEAT_DATABASE_DSN")]
+    pub database_dsn: Option<String>,
+}
+
+/// Run the web server.
+#[derive(Debug, Parser)]
+pub struct WebCli {
+    /// A `PostgreSQL` connection string. [default:
+    /// `postgres://heartbeat@db/heartbeat` if running in Docker,
+    /// `postgres://postgres@localhost/postgres` otherwise]
     #[clap(long, short, env = "HEARTBEAT_DATABASE_DSN")]
     pub database_dsn: Option<String>,
     #[cfg(feature = "webhook")]
     #[clap(long, env = "HEARTBEAT_WEBHOOK_URL")]
-    /// The URL of the Discord webhook.
+    /// The URL of the Discord webhook. [default: none]
     pub webhook_url: Option<String>,
     #[cfg(feature = "webhook")]
     #[clap(long, env = "HEARTBEAT_WEBHOOK_LEVEL")]
-    /// The minimum level of events that triggers a webhook.
+    /// The minimum level of events that triggers a webhook. [default: none]
     pub webhook_level: Option<WebhookLevel>,
     /// A random URL-safe string used as a master Authorization header
     /// for adding new devices.
     #[clap(long, short = 's', env = "HEARTBEAT_SECRET_KEY")]
     pub secret_key: Option<String>,
-    /// The GitHub repository URL of the project.
+    /// The GitHub repository URL of the project. [default: <https://github.com/lmaotrigine/heartbeat>]
     #[clap(long, short = 'r', env = "HEARTBEAT_REPO")]
     pub repo: Option<String>,
     /// A human-readable name for the server used in <title> tags
-    /// and other metadata.
+    /// and other metadata. [default: Some person's heartbeat]
     #[clap(long, env = "HEARTBEAT_SERVER_NAME")]
     pub server_name: Option<String>,
-    /// The publicly accessible URL of the server.
+    /// The publicly accessible URL of the server. [default: `http://127.0.0.1:6060`]
     #[clap(long, short = 'u', env = "HEARTBEAT_LIVE_URL")]
     pub live_url: Option<String>,
-    /// The bind address for the server.
+    /// The bind address for the server. [default: `127.0.0.1:6060`]
     #[clap(long, short, env = "HEARTBEAT_BIND")]
     pub bind: Option<SocketAddr>,
-    /// Path to the directory containing static files. [default: ./static]
-    #[clap(long, env = "HEARTBEAT_STATIC_DIR")]
-    pub static_dir: Option<PathBuf>,
-    /// The path to the configuration file. [default: ./config.toml]
-    #[clap(long, short = 'c', env = "HEARTBEAT_CONFIG_FILE")]
-    pub config_file: Option<PathBuf>,
+    /// The path to the configuration file.
+    #[command(flatten)]
+    pub config_file: __ConfigFile,
+}
+
+#[derive(Debug)]
+pub struct __ConfigFile {
+    path: Option<PathBuf>,
+}
+
+impl std::ops::Deref for __ConfigFile {
+    type Target = Option<PathBuf>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.path
+    }
+}
+
+impl FromArgMatches for __ConfigFile {
+    fn from_arg_matches(matches: &clap::ArgMatches) -> Result<Self, clap::Error> {
+        Ok(Self {
+            path: matches.get_one::<PathBuf>("config-file").cloned(),
+        })
+    }
+
+    fn update_from_arg_matches(&mut self, matches: &clap::ArgMatches) -> Result<(), clap::Error> {
+        self.path = matches.get_one::<PathBuf>("config-file").cloned();
+        Ok(())
+    }
+}
+
+impl __ConfigFile {
+    fn default() -> PathBuf {
+        heartbeat_home()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join("config.toml")
+    }
+}
+
+impl Args for __ConfigFile {
+    fn augment_args(cmd: clap::Command) -> clap::Command {
+        cmd.arg(
+            Arg::new("config-file")
+                .short('c')
+                .long("config-file")
+                .required(false)
+                .help(format!(
+                    "The path to the configuration file [default: {}]",
+                    Self::default().display()
+                ))
+                .env("HEARTBEAT_CONFIG_FILE"),
+        )
+    }
+
+    fn augment_args_for_update(cmd: clap::Command) -> clap::Command {
+        cmd.arg(
+            Arg::new("config-file")
+                .short('c')
+                .long("config-file")
+                .required(false)
+                .help(format!(
+                    "The path to the configuration file [default: {}]",
+                    Self::default().display()
+                ))
+                .env("HEARTBEAT_CONFIG_FILE"),
+        )
+    }
 }
 
 /// The configuration for the server.
@@ -81,8 +180,6 @@ pub struct Config {
     pub live_url: String,
     /// The bind address for the server.
     pub bind: SocketAddr,
-    /// Path to the directory containing static files.
-    pub static_dir: PathBuf,
 }
 
 #[derive(Debug, Deserialize)]
@@ -162,7 +259,8 @@ impl From<TomlDeError> for Error {
 }
 
 // this handles all the lookup bits in the right order
-// so it goes CLI -> env vars -> profile-specific overrides -> bare values in TOML -> hardcoded fallback
+// so it goes CLI -> env vars -> profile-specific overrides -> bare values in
+// TOML -> hardcoded fallback
 macro_rules! config_field {
     ($first:ident.$second:ident, $field:ident, $type:ty$(, $default:expr)?) => {
         fn $field(&self) -> Result<$type, Error> {
@@ -189,7 +287,7 @@ macro_rules! config_field {
 }
 
 struct Merge<'a> {
-    cli: Cli,
+    cli: WebCli,
     toml: &'a toml::Value,
 }
 
@@ -215,7 +313,7 @@ impl<'a> Merge<'a> {
     });
 
     #[cfg(feature = "webhook")]
-    config_field!(webhook.url, webhook_url, String);
+    config_field!(webhook.url, webhook_url, String, String::new());
 
     #[cfg(feature = "webhook")]
     config_field!(webhook.level, webhook_level, WebhookLevel, WebhookLevel::None);
@@ -233,8 +331,6 @@ impl<'a> Merge<'a> {
         SocketAddr,
         SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 6060))
     );
-
-    config_field!(static_dir, PathBuf, PathBuf::from("./static"));
 
     fn profile_value<T: Debug + Deserialize<'a>>(&self, field: &'a str) -> Option<T> {
         let value = self
@@ -257,7 +353,7 @@ impl<'a> Merge<'a> {
                 }
                 value
             })
-            .ok_or(Error::MissingField(field))
+            .ok_or_else(|| Error::MissingField(field))
     }
 
     fn profile_value_nested<T: Debug + Deserialize<'a>>(&self, outer: &'a str, inner: &'a str) -> Option<T> {
@@ -302,39 +398,39 @@ impl<'a> Merge<'a> {
             server_name: self.server_name()?,
             live_url: self.live_url()?,
             bind: self.bind()?,
-            static_dir: self.static_dir()?,
         })
     }
 }
 
 impl Config {
-    /// Tries to parse a [`Config`] from the command line arguments, environment variables,
-    /// and a TOML configuration file.
+    /// Tries to parse a [`Config`] from the command line arguments, environment
+    /// variables, and a TOML configuration file.
     ///
-    /// The TOML configuration file is located at `./config.toml` by default, but can be
-    /// changed with the `--config-file` command line argument.
+    /// The TOML configuration file is located at `$HEARTBEAT_HOME/config.toml`
+    /// by default, but can be changed with the `--config-file` command line
+    /// argument. `$HEARTBEAT_HOME` is ~/.heartbeat by default.
     ///
     /// # Errors
     ///
-    /// This function will return an error if a path was explicitly specified and doesn't point to a regular file, the
-    /// file could not be read from (if it exists), is not valid TOML, or the required fields are not provided by
-    /// any of the sources.
-    pub fn try_new() -> Result<Self, Error> {
+    /// This function will return an error if a path was explicitly specified
+    /// and doesn't point to a regular file, the file could not be read from
+    /// (if it exists), is not valid TOML, or the required fields are not
+    /// provided by any of the sources.
+    pub fn try_new(cli: WebCli) -> Result<Self, Error> {
         let mut fail_on_not_exists = true;
-        let cli = Cli::parse();
         let config_path = cli.config_file.as_ref().map_or_else(
             || {
                 fail_on_not_exists = false;
-                Path::new("config.toml")
+                __ConfigFile::default()
             },
-            |p| p.as_path(),
+            Clone::clone,
         );
         let toml_config = if config_path.is_file() {
             info!("Reading configuration from {}", config_path.display());
             let config_str = read_to_string(config_path).map_err(Into::<Error>::into)?;
             toml::from_str(&config_str)?
         } else if fail_on_not_exists {
-            return Err(Error::InvalidConfigPath(config_path.to_path_buf()));
+            return Err(Error::InvalidConfigPath(config_path));
         } else {
             // just an empty table
             toml::Value::Table(toml::map::Map::new())
