@@ -113,20 +113,19 @@ jobs:
         run: |
           echo $PATH
           clang --version
-      - name: setup ripgrep
-        uses: lmaotrigine/fetch-crate-action@mistress
+      - name: setup cargo-binstall
+        uses: taiki-e/install-action@v2
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          owner: BurntSushi
-          name: ripgrep
-          bin: rg
+          tool: cargo-binstall
+      - name: setup ripgrep
+        uses: taiki-e/install-action@v2
+        with:
+          tool: ripgrep
       - name: setup cross
         if: ${{ matrix.cargo == 'cross' }}
-        uses: lmaotrigine/fetch-crate-action@mistress
+        uses: taiki-e/install-action@v2
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          owner: cross-rs
-          name: cross
+          tool: cross
       - name: ref type
         id: ref-type
         run: ./bin/ref-type $REF >> "$GITHUB_OUTPUT"

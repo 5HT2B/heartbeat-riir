@@ -57,27 +57,24 @@ jobs:
           components: clippy, rustfmt
       - name: setup nextest
         if: steps.should-check.outputs.status == 'yes'
-        uses: lmaotrigine/fetch-crate-action@mistress
+        uses: taiki-e/install-action@v2
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          owner: nextest-rs
-          name: nextest
-          bin: cargo-nextest
+          tool: cargo-nextest
       - name: setup just
         if: steps.should-check.outputs.status == 'yes'
-        uses: lmaotrigine/fetch-crate-action@mistress
+        uses: taiki-e/install-action@v2 
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          owner: casey
-          name: just
+          tool: just
+      - name: setup cargo-binstall
+        if: steps.should-check.outputs.status == 'yes'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-binstall
       - name: setup ripgrep
         if: steps.should-check.outputs.status == 'yes'
-        uses: lmaotrigine/fetch-crate-action@mistress
+        uses: taiki-e/install-action@v2
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          owner: BurntSushi
-          name: ripgrep
-          bin: rg
+          tool: ripgrep
       - name: check and test
         if: steps.should-check.outputs.status == 'yes'
         run: |
@@ -104,11 +101,9 @@ jobs:
           node-version: 18
       - name: Install just
         if: steps.should-check.outputs.status == 'yes'
-        uses: lmaotrigine/fetch-crate-action@mistress
+        uses: taiki-e/install-action@v2
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          owner: casey
-          name: just
+          tool: just
       - name: install dependencies
         if: steps.should-check-static.outputs.status == 'yes'
         run: |
