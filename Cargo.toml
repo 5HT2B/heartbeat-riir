@@ -18,7 +18,7 @@ axum-realip = { path = "lib/axum-realip", version = "0.1.0" }
 badges = { git = "https://github.com/lmaotrigine/badges", version = "0.1.0", optional = true }
 base64ct = "1"
 chrono = { version = "0.4", features = ["serde", "std", "clock"], default-features = false }
-clap = { version = "4", default-features = false, features = ["derive", "env", "error-context", "help", "std", "usage"] }
+clap = { version = "4", default-features = false, features = ["derive", "env", "error-context", "help", "std", "usage", "wrap_help"] }
 color-eyre = "0.6"
 erased-debug = { path = "lib/erased-debug", version = "0.1.0", features = ["serde"] }
 heartbeat-sys = { path = "lib/heartbeat-sys", version = "0.1.0" }
@@ -30,7 +30,7 @@ mime_guess = { version = "2.0.4", default-features = false }
 parking_lot = "0.12"
 percent-encoding = { version = "2.3.0", default-features = false }
 rand = { version = "0.8", default-features = false, features = ["getrandom"] }
-reqwest = { version = "0.11", features = ["json", "rustls-tls-webpki-roots"], optional = true, default-features = false }
+reqwest = { version = "0.11", features = ["json"], optional = true, default-features = false }
 rust-embed = "8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -50,11 +50,16 @@ jemallocator = "0.5"
 heartbeat-sys = { path = "lib/heartbeat-sys", version = "0.1.0" }
 
 [features]
-default = ["badges", "webhook"]
+default = ["badges", "webhook", "tls-rustls"]
+tls-rustls = ["reqwest?/rustls-tls-webpki-roots"]
+tls-native = ["reqwest?/native-tls"]
+tls-native-vendored = ["reqwest?/native-tls-vendored"]
 badges = ["dep:badges"]
 webhook = ["reqwest"]
 migrate = ["sqlx/migrate"]
-sqlx-tls = ["sqlx/tls-rustls"]
+sqlx-tls = ["sqlx-tls-rustls"]
+sqlx-tls-rustls = ["sqlx/tls-rustls"]
+sqlx-tls-native = ["sqlx/tls-native-tls"]
 
 [profile.release]
 panic = "abort"
