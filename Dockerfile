@@ -29,7 +29,7 @@ SHELL [ "/bin/ash", "-euxo", "pipefail", "-c" ]
 
 WORKDIR /usr/src/app
 
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml Cargo.lock lib ./
 
 # Feature flags to enable
 ARG FEATURES=default
