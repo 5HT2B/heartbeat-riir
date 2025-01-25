@@ -29,7 +29,9 @@ SHELL [ "/bin/ash", "-euxo", "pipefail", "-c" ]
 
 WORKDIR /usr/src/app
 
-COPY Cargo.toml Cargo.lock lib ./
+COPY Cargo.toml Cargo.lock ./
+# can't be same instruction. I hate this.
+COPY lib ./lib
 
 # Feature flags to enable
 ARG FEATURES=default
