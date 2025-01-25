@@ -13,14 +13,15 @@
     clippy::unwrap_used
 )]
 
-use axum::{middleware, Server};
+use axum::{middleware, serve};
 use color_eyre::eyre::Result;
 use std::{net::SocketAddr, sync::OnceLock};
+use tokio::net::TcpListener;
 use tower_http::{
     services::ServeDir,
     trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
 };
-use tracing::{info, span, warn, Instrument, Level};
+use tracing::{info, warn, Level};
 
 use heartbeat::{handle_errors, routes::router, AppState, Config};
 
@@ -50,10 +51,10 @@ async fn main() -> Result<()> {
         let _ = tokio::signal::ctrl_c().await;
         warn!("Initiating graceful shutdown");
     };
-    let server = Server::bind(&bind).serve(router.into_make_service_with_connect_info::<SocketAddr>());
-    info!("Listening on {}", server.local_addr());
-    Ok(server
-        .with_graceful_shutdown(graceful_shutdown)
-        .instrument(span!(Level::INFO, "server"))
-        .await?)
+    let server = serve(
+        TcpListener::bind(bind).await?,
+        router.into_make_service_with_connect_info::<SocketAddr>(),
+    );
+    info!("Listening on {}", server.local_addr()?);
+    Ok(server.with_graceful_shutdown(graceful_shutdown).await?)
 }
