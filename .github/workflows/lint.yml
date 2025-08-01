@@ -78,7 +78,7 @@ jobs:
       - name: check and test
         if: steps.should-check.outputs.status == 'yes'
         run: |
-          just ci-lint
+          just ci
         shell: bash
   lint-static:
     runs-on: ubuntu-latest
