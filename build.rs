@@ -13,6 +13,8 @@
     clippy::unwrap_used
 )]
 
+use core::fmt::Write;
+
 fn main() {
     let mut version = env!("CARGO_PKG_VERSION").to_owned();
     let rev = git_revision().unwrap_or_else(|| "main".into());
@@ -21,7 +23,7 @@ fn main() {
             version.push('.');
             version.push_str(&count);
         }
-        version.push_str(&format!("+g{rev}"));
+        write!(version, "+g{rev}").expect("writing to String cannot fail");
     }
     println!("cargo:rustc-env=HB_VERSION={version}");
     println!("cargo:rustc-env=HB_GIT_REVISION={rev}");
